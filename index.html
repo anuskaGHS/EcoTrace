@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoTrace — Mapping Waste, Inspiring Action</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-dark: #1b5e20;
+    --green-mid: #2e7d32;
+    --green-main: #388e3c;
+    --green-light: #4caf50;
+    --green-pale: #c8e6c9;
+    --green-bg: #f1f8e9;
+    --white: #ffffff;
+    --text-dark: #1a1a1a;
+    --text-mid: #3d3d3d;
+    --text-light: #666;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.13);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --font-display: 'Merriweather', Georgia, serif;
+    --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-body); color: var(--text-dark); background: var(--white); overflow-x: hidden; }
+
+  /* NAVBAR */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--green-pale);
+    padding: 0 5%; display: flex; align-items: center; justify-content: space-between;
+    height: 66px; box-shadow: 0 2px 16px rgba(46,125,50,0.06);
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-size: 1.45rem; font-weight: 900;
+    color: var(--green-mid); letter-spacing: -0.5px; text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 4px; align-items: center; }
+  .nav-links a {
+    text-decoration: none; color: var(--text-mid); font-size: 0.88rem; font-weight: 500;
+    padding: 7px 13px; border-radius: 20px; transition: all 0.2s; font-family: var(--font-body);
+  }
+  .nav-links a:hover { background: var(--green-pale); color: var(--green-dark); }
+  .nav-links a.active { border-bottom: 2px solid var(--green-mid); color: var(--green-mid); font-weight: 600; }
+  .nav-links .nav-cta { background: var(--green-mid); color: white; padding: 8px 16px; }
+  .nav-links .nav-cta:hover { background: var(--green-dark); color: white; }
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+  .hamburger span { width: 24px; height: 2px; background: var(--green-mid); border-radius: 2px; transition: 0.3s; }
+  .mobile-menu {
+    display: none; position: fixed; top: 66px; left: 0; right: 0;
+    background: white; border-bottom: 1px solid var(--green-pale);
+    padding: 14px 5%; flex-direction: column; gap: 4px; z-index: 9998; box-shadow: var(--shadow);
+  }
+  .mobile-menu a {
+    text-decoration: none; color: var(--text-mid); font-size: 0.95rem; font-weight: 500;
+    padding: 11px 14px; border-radius: 10px; display: block; transition: all 0.2s;
+  }
+  .mobile-menu a:hover { background: var(--green-pale); color: var(--green-dark); }
+  .mobile-menu.open { display: flex; }
+
+  /* HERO */
+  #home {
+    min-height: 100vh;
+    background-image: linear-gradient(rgba(0,0,0,0.44), rgba(0,0,0,0.44)),
+                      url('bg.jpg');
+    background-size: cover; background-position: center top;
+    display: flex; align-items: center; padding: 100px 5% 60px;
+  }
+  .hero-inner { max-width: 680px; }
+  .hero-title {
+    font-family: var(--font-display); font-size: clamp(2.3rem, 5vw, 3.4rem);
+    font-weight: 900; line-height: 1.15; color: white; margin-bottom: 16px;
+  }
+  .hero-tagline { font-size: 1.1rem; font-weight: 500; color: #a5d6a7; margin-bottom: 14px; }
+  .hero-desc { font-size: 1rem; color: rgba(255,255,255,0.85); line-height: 1.7; margin-bottom: 32px; font-weight: 300; }
+  .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 40px; }
+  .btn-primary {
+    background: var(--green-light); color: white; padding: 13px 26px; border-radius: 6px;
+    font-weight: 600; font-size: 0.92rem; text-decoration: none; border: none; cursor: pointer;
+    transition: all 0.25s; font-family: var(--font-body); box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .btn-primary:hover { background: var(--green-mid); transform: translateY(-2px); }
+  .btn-secondary {
+    background: transparent; color: white; padding: 13px 26px; border-radius: 6px;
+    font-weight: 600; font-size: 0.92rem; text-decoration: none; border: 2px solid rgba(255,255,255,0.7);
+    cursor: pointer; transition: all 0.25s; font-family: var(--font-body);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: white; }
+  .hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+  .hero-stat .num { font-family: var(--font-display); font-size: 1.9rem; font-weight: 900; color: #ddf3de; }
+  .hero-stat .label { font-size: 0.78rem; color: rgba(255,255,255,0.7); font-weight: 400; margin-top: 2px; }
+
+  /* SECTIONS */
+  section { padding: 76px 5%; }
+  .section-inner { max-width: 1160px; margin: 0 auto; }
+  .section-tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--green-main); margin-bottom: 10px; }
+  .section-title { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 900; color: var(--green-dark); margin-bottom: 12px; line-height: 1.25; }
+  .section-sub { font-size: 0.98rem; color: var(--text-light); max-width: 580px; line-height: 1.65; margin-bottom: 36px; }
+
+  /* MAP */
+  #map-section { background: var(--green-bg); }
+  #leaflet-map { width: 100%; height: 520px; border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--green-pale); }
+  .map-legend {
+    display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding: 14px 20px;
+    background: white; border-radius: var(--radius-sm); box-shadow: var(--shadow);
+    border: 1px solid var(--green-pale); align-items: center; justify-content: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-mid); font-weight: 500; }
+  .legend-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+  .dot-red { background: #e53935; }
+  .dot-orange { background: #fb8c00; }
+  .dot-blue { background: #1565c0; }
+
+  /* DIRECTORY */
+  #directory { background: white; }
+  .dir-controls { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+  .dir-controls input, .dir-controls select {
+    padding: 10px 15px; border: 1.5px solid var(--green-pale); border-radius: 8px;
+    font-family: var(--font-body); font-size: 0.9rem; color: var(--text-dark);
+    outline: none; transition: border 0.2s; background: white;
+  }
+  .dir-controls input { flex: 1; min-width: 200px; }
+  .dir-controls input:focus, .dir-controls select:focus { border-color: var(--green-main); }
+  .dir-table-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #e8f0eb; }
+  table { width: 100%; border-collapse: collapse; background: white; }
+  thead { background: var(--green-mid); color: white; }
+  thead th { padding: 13px 15px; text-align: left; font-size: 0.84rem; font-weight: 600; letter-spacing: 0.3px; font-family: var(--font-body); }
+  tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.15s; }
+  tbody tr:hover { background: var(--green-bg); }
+  tbody td { padding: 11px 15px; font-size: 0.84rem; color: var(--text-mid); font-family: var(--font-body); }
+  .zone-badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 0.74rem; font-weight: 600; }
+  .zone-N { background: #e3f2fd; color: #1565c0; }
+  .zone-S { background: #e8f5e9; color: #2e7d32; }
+  .zone-E { background: #fff3e0; color: #e65100; }
+  .zone-W { background: #fce4ec; color: #c62828; }
+  .zone-C { background: #f3e5f5; color: #6a1b9a; }
+  .data-note { margin-top: 13px; font-size: 0.8rem; color: var(--text-light); padding: 10px 15px; background: var(--green-bg); border-radius: 7px; border-left: 3px solid var(--green-light); }
+
+  /* SEGREGATION */
+  #guide { background: var(--green-bg); }
+  .waste-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 36px; }
+  .waste-card { border-radius: var(--radius); padding: 28px 22px; box-shadow: var(--shadow); border-top: 5px solid; transition: transform 0.22s, box-shadow 0.22s; }
+  .waste-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .waste-card.wet  { background: #e8f5e9; border-color: #2e7d32; }
+  .waste-card.dry  { background: #e3f2fd; border-color: #1565c0; }
+  .waste-card.haz  { background: #ffebee; border-color: #c62828; }
+  .waste-card.ewaste { background: #f5f5f5; border-color: #212121; }
+  .wc-dot { width: 44px; height: 44px; border-radius: 50%; margin-bottom: 16px; }
+  .wet  .wc-dot { background: #2e7d32; }
+  .dry  .wc-dot { background: #1565c0; }
+  .haz  .wc-dot { background: #c62828; }
+  .ewaste .wc-dot { background: #212121; }
+  .waste-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-dark); font-family: var(--font-display); }
+  .waste-card .bin { font-size: 0.76rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; display: inline-block; margin-bottom: 14px; }
+  .wet  .bin { background: #c8e6c9; color: #1b5e20; }
+  .dry  .bin { background: #bbdefb; color: #0d47a1; }
+  .haz  .bin { background: #ffcdd2; color: #b71c1c; }
+  .ewaste .bin { background: #e0e0e0; color: #212121; }
+  .waste-card ul { list-style: none; padding: 0; }
+  .waste-card ul li { font-size: 0.86rem; color: var(--text-mid); padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+  .waste-card ul li:last-child { border: none; }
+  .waste-card ul li::before { content: "• "; font-weight: bold; }
+  .wet    li::before { color: #2e7d32; }
+  .dry    li::before { color: #1565c0; }
+  .haz    li::before { color: #c62828; }
+  .ewaste li::before { color: #424242; }
+  .tips-section { background: white; border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); }
+  .tips-section h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--green-dark); margin-bottom: 20px; }
+  .tips-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 13px; }
+  .tip-item { display: flex; gap: 13px; align-items: flex-start; padding: 13px 15px; background: var(--green-bg); border-radius: 9px; }
+  .tip-num { background: var(--green-mid); color: white; width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; flex-shrink: 0; }
+  .tip-text { font-size: 0.87rem; color: var(--text-mid); line-height: 1.5; }
+
+  /* REPORT */
+  #report { background: white; }
+  .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .report-info h3 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--green-dark); margin-bottom: 14px; }
+  .report-info p { font-size: 0.95rem; color: var(--text-mid); line-height: 1.7; margin-bottom: 18px; }
+  .report-note { background: var(--green-bg); border-radius: 9px; padding: 14px; border-left: 4px solid var(--green-light); font-size: 0.84rem; color: var(--green-dark); }
+  .report-steps { margin-top: 22px; }
+  .report-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+  .step-dot { background: var(--green-light); color: white; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.76rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-text { font-size: 0.87rem; color: var(--text-mid); line-height: 1.5; }
+  .report-form-wrap { background: var(--green-bg); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 0.84rem; font-weight: 600; color: var(--green-dark); margin-bottom: 6px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 13px; border: 1.5px solid var(--green-pale); border-radius: 8px;
+    font-family: var(--font-body); font-size: 0.9rem; color: var(--text-dark);
+    background: white; outline: none; transition: border 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--green-main); }
+  .form-group textarea { resize: vertical; min-height: 95px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+  .btn-submit {
+    width: 100%; background: var(--green-mid); color: white; padding: 13px; border: none;
+    border-radius: 8px; font-family: var(--font-body); font-size: 0.96rem; font-weight: 600;
+    cursor: pointer; transition: all 0.22s; box-shadow: 0 3px 14px rgba(46,125,50,0.22);
+  }
+  .btn-submit:hover { background: var(--green-dark); transform: translateY(-1px); }
+  .success-msg {
+    display: none; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;
+    border-radius: 9px; padding: 15px; font-size: 0.9rem; font-weight: 500;
+    text-align: center; margin-top: 14px;
+  }
+  .success-msg.show { display: block; }
+
+  /* CONTACT */
+  #contact { background: var(--green-bg); }
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; }
+  .contact-card {
+    background: white; border-radius: var(--radius); padding: 22px;
+    box-shadow: var(--shadow); border: 1px solid var(--green-pale);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .contact-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .cc-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--green-main); margin-bottom: 8px; display: block; }
+  .contact-card h3 { font-size: 0.94rem; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; line-height: 1.3; }
+  .cc-detail { font-size: 0.84rem; color: var(--text-mid); margin-bottom: 6px; display: flex; gap: 8px; align-items: flex-start; }
+  .cc-icon-label { color: var(--green-main); flex-shrink: 0; font-weight: 600; min-width: 48px; font-size: 0.78rem; }
+  .contact-card a { color: var(--green-main); text-decoration: none; }
+  .contact-card a:hover { text-decoration: underline; }
+
+  /* FOOTER */
+  footer { background: var(--green-dark); color: white; text-align: center; padding: 30px 5%; }
+  .footer-logo { font-family: var(--font-display); font-size: 1.3rem; font-weight: 900; margin-bottom: 8px; }
+  .footer-tagline { font-size: 0.84rem; color: #a5d6a7; margin-bottom: 12px; font-style: italic; }
+  .footer-info { font-size: 0.78rem; color: #81c784; line-height: 1.8; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .report-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    section { padding: 56px 5%; }
+    .hero-stats { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <a href="#home" class="nav-logo">EcoTrace</a>
+  <div class="nav-links">
+    <a href="#map-section">Hotspot Map</a>
+    <a href="#directory">Recycling Centres</a>
+    <a href="#guide">Waste Guide</a>
+    <a href="#report">Report</a>
+    <a href="#contact" class="nav-cta">Contact BBMP</a>
+  </div>
+  <div class="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#map-section" onclick="closeMenu()">Hotspot Map</a>
+  <a href="#directory" onclick="closeMenu()">Recycling Centres</a>
+  <a href="#guide" onclick="closeMenu()">Waste Guide</a>
+  <a href="#report" onclick="closeMenu()">Report Waste</a>
+  <a href="#contact" onclick="closeMenu()">Contact BBMP</a>
+</div>
+
+<!-- HERO -->
+<section id="home">
+  <div class="hero-inner">
+    <h1 class="hero-title">Mapping Waste,<br>Inspiring Action</h1>
+    <p class="hero-tagline">EcoTrace — Bangalore's Waste Awareness Platform</p>
+    <p class="hero-desc">Visualising waste hotspots, recycling centres, and segregation guidelines across Bangalore — making waste management challenges visible and actionable for every resident.</p>
+    <div class="hero-btns">
+      <a href="#map-section" class="btn-primary">Explore Hotspot Map</a>
+      <a href="#directory" class="btn-secondary">Find Recycling Centres</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">336</div><div class="label">BBMP Centres Mapped</div></div>
+      <div class="hero-stat"><div class="num">20+</div><div class="label">Hotspots Identified</div></div>
+      <div class="hero-stat"><div class="num">4.4/5</div><div class="label">Stakeholder Rating</div></div>
+      <div class="hero-stat"><div class="num">100%</div><div class="label">Support Awareness</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WASTE HOTSPOT MAP -->
+<section id="map-section">
+  <div class="section-inner">
+    <div class="section-tag">Interactive Map</div>
+    <h2 class="section-title">Waste Hotspots in Bangalore</h2>
+    <p class="section-sub">Mapped overflowing bins, illegal dumping zones, and areas with irregular waste collection across Bangalore. Click any marker for details.</p>
+    <div id="leaflet-map"></div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot dot-red"></div> Active Hotspot</div>
+      <div class="legend-item"><div class="legend-dot dot-orange"></div> Reported</div>
+      <div class="legend-item"><div class="legend-dot dot-blue"></div> Under Review</div>
+    </div>
+  </div>
+</section>
+
+<!-- RECYCLING CENTRE DIRECTORY -->
+<section id="directory">
+  <div class="section-inner">
+    <div class="section-tag">BBMP Dataset</div>
+    <h2 class="section-title">Dry Waste Collection Centres</h2>
+    <p class="section-sub">336 BBMP Dry Waste Collection Centres across Bangalore. Search or filter by zone to find the one nearest to you.</p>
+    <div class="dir-controls">
+      <input type="text" id="searchInput" placeholder="Search by name, ward, or address..." oninput="filterTable()">
+      <select id="zoneFilter" onchange="filterTable()">
+        <option value="">All Zones</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+        <option value="Central">Central</option>
+      </select>
+    </div>
+    <div class="dir-table-wrap">
+      <table id="centreTable">
+        <thead>
+          <tr><th>#</th><th>Centre Name</th><th>Zone</th><th>Ward</th><th>Address</th><th>Timings</th><th>Contact</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="data-note">Data source: <strong>data.opencity.in</strong> — BBMP Solid Waste Management Dataset. 336 BBMP Dry Waste Collection Centres with GPS coordinates.</div>
+  </div>
+</section>
+
+<!-- WASTE SEGREGATION GUIDE -->
+<section id="guide">
+  <div class="section-inner">
+    <div class="section-tag">Awareness and Education</div>
+    <h2 class="section-title">How to Segregate Your Waste</h2>
+    <p class="section-sub">Simple guidelines for every household in Bangalore. Proper segregation is the first step toward a cleaner city.</p>
+    <div class="waste-cards">
+      <div class="waste-card wet">
+        <div class="wc-dot"></div>
+        <h3>Wet Waste</h3>
+        <span class="bin">Green Bin</span>
+        <ul>
+          <li>Food scraps and leftover food</li>
+          <li>Vegetable and fruit peels</li>
+          <li>Garden waste and leaves</li>
+          <li>Cooked food and eggshells</li>
+          <li>Tea bags and coffee grounds</li>
+        </ul>
+      </div>
+      <div class="waste-card dry">
+        <div class="wc-dot"></div>
+        <h3>Dry Waste</h3>
+        <span class="bin">Blue Bin</span>
+        <ul>
+          <li>Paper, cardboard, newspapers</li>
+          <li>Plastic bottles and packaging</li>
+          <li>Glass bottles and jars</li>
+          <li>Metal cans and foil</li>
+          <li>Cloth and textile scraps</li>
+        </ul>
+      </div>
+      <div class="waste-card haz">
+        <div class="wc-dot"></div>
+        <h3>Hazardous Waste</h3>
+        <span class="bin">Special Disposal</span>
+        <ul>
+          <li>Batteries and cells</li>
+          <li>Paints and chemicals</li>
+          <li>Medicines and syringes</li>
+          <li>Pesticides and fertilisers</li>
+          <li>Aerosol cans</li>
+        </ul>
+      </div>
+      <div class="waste-card ewaste">
+        <div class="wc-dot"></div>
+        <h3>E-Waste</h3>
+        <span class="bin">E-Waste Centres Only</span>
+        <ul>
+          <li>Old mobile phones and laptops</li>
+          <li>Cables, chargers, remotes</li>
+          <li>CFL bulbs and tube lights</li>
+          <li>Printers and televisions</li>
+          <li>Batteries and power banks</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tips-section">
+      <h3>5 Practical Tips to Reduce Household Waste</h3>
+      <div class="tips-list">
+        <div class="tip-item"><div class="tip-num">1</div><div class="tip-text">Use cloth bags instead of single-use plastic bags when shopping.</div></div>
+        <div class="tip-item"><div class="tip-num">2</div><div class="tip-text">Start a small compost bin at home for wet waste — it becomes natural fertiliser.</div></div>
+        <div class="tip-item"><div class="tip-num">3</div><div class="tip-text">Buy products with minimal packaging and prefer reusable containers.</div></div>
+        <div class="tip-item"><div class="tip-num">4</div><div class="tip-text">Donate old clothes, furniture, and electronics instead of throwing them away.</div></div>
+        <div class="tip-item"><div class="tip-num">5</div><div class="tip-text">Never mix wet and dry waste — always use separate bins and hand over to BBMP collectors.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REPORT WASTE -->
+<section id="report">
+  <div class="section-inner">
+    <div class="section-tag">Community Action</div>
+    <h2 class="section-title">Report a Waste Dumping Spot</h2>
+    <p class="section-sub">Spotted an overflowing bin or illegal dumping? Report it here and we will forward it to the BBMP ward office.</p>
+    <div class="report-grid">
+      <div class="report-info">
+        <h3>How Your Report Helps</h3>
+        <p>Every report submitted through EcoTrace is reviewed and forwarded to the relevant BBMP ward office for action. Community reporting is one of the most effective ways to address waste management gaps in Bangalore.</p>
+        <div class="report-note">All reports are reviewed and forwarded to the relevant BBMP ward office. You may be contacted for verification.</div>
+        <div class="report-steps">
+          <div class="report-step"><div class="step-dot">1</div><div class="step-text">Fill in the location and issue details below.</div></div>
+          <div class="report-step"><div class="step-dot">2</div><div class="step-text">Upload a photo if possible — it helps verify the report faster.</div></div>
+          <div class="report-step"><div class="step-dot">3</div><div class="step-text">Submit — your report is logged and forwarded to BBMP.</div></div>
+          <div class="report-step"><div class="step-dot">4</div><div class="step-text">Share the platform with neighbours to build community action.</div></div>
+        </div>
+      </div>
+      <div class="report-form-wrap">
+        <div class="form-group">
+          <label>Your Name *</label>
+          <input type="text" id="f-name" placeholder="Enter your full name">
+        </div>
+        <div class="form-group">
+          <label>Your Email *</label>
+          <input type="email" id="f-email" placeholder="Enter your email address">
+        </div>
+        <div class="form-group">
+          <label>Location / Address of Waste Spot *</label>
+          <input type="text" id="f-location" placeholder="e.g. Near Koramangala Water Tank, 5th Block">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Zone *</label>
+            <select id="f-zone">
+              <option value="">Select Zone</option>
+              <option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Type of Issue *</label>
+            <select id="f-issue">
+              <option value="">Select Issue</option>
+              <option>Overflowing Bin</option>
+              <option>Illegal Dumping</option>
+              <option>Irregular Collection</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="f-desc" placeholder="Describe the issue in detail..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Upload Photo (Optional)</label>
+          <input type="file" id="f-photo" accept="image/*">
+        </div>
+        <button class="btn-submit" onclick="submitReport()">Submit Report</button>
+        <div class="success-msg" id="successMsg">Thank you! Your report has been submitted. BBMP will be notified and the issue will be reviewed within 48 hours.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="section-inner">
+    <div class="section-tag">Get Help</div>
+    <h2 class="section-title">Contact BBMP and Authorities</h2>
+    <p class="section-sub">Reach out to Bangalore's waste management authorities directly for urgent issues, complaints, or information.</p>
+    <div class="contact-grid">
+      <div class="contact-card">
+        <span class="cc-label">Waste Management Helpline</span>
+        <h3>BBMP Solid Waste Management</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>1800-425-1980 (Toll Free)</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-22975050</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Email</span><span><a href="mailto:bbmpcomm@gmail.com">bbmpcomm@gmail.com</a></span></div>
+      </div>
+      <div class="contact-card">
+        <span class="cc-label">24x7 Emergency</span>
+        <h3>BBMP Control Room</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-22660000</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-22975050</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Hours</span><span>Available 24 hours, 7 days</span></div>
+      </div>
+      <div class="contact-card">
+        <span class="cc-label">Head Office</span>
+        <h3>Bruhat Bengaluru Mahanagara Palike</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Address</span><span>N.R. Square, Bangalore — 560002</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-22975050</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Hours</span><span>Monday to Saturday, 10:00 AM to 5:30 PM</span></div>
+      </div>
+      <div class="contact-card">
+        <span class="cc-label">Pollution Control</span>
+        <h3>Karnataka State Pollution Control Board</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-25589112</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-25589117</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Address</span><span>Parisara Bhavan, Bangalore</span></div>
+      </div>
+      <div class="contact-card">
+        <span class="cc-label">Waste NGO</span>
+        <h3>Hasirudala</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Phone</span><span>080-41655655</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Website</span><span><a href="https://hasirudala.in" target="_blank">hasirudala.in</a></span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Address</span><span>Waste picker welfare and recycling, Bangalore</span></div>
+      </div>
+      <div class="contact-card">
+        <span class="cc-label">Open Data</span>
+        <h3>BBMP Solid Waste Dataset</h3>
+        <div class="cc-detail"><span class="cc-icon-label">Website</span><span><a href="https://data.opencity.in/dataset/bbmp-solid-waste-management-data" target="_blank">data.opencity.in</a></span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Data</span><span>336 BBMP Dry Waste Collection Centres</span></div>
+        <div class="cc-detail"><span class="cc-icon-label">Data</span><span>GPS coordinates, open public dataset</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">EcoTrace</div>
+  <div class="footer-tagline">Mapping Waste, Inspiring Action</div>
+  <div class="footer-info">
+    &copy; 2026 EcoTrace &nbsp;|&nbsp; Built by Anuska &amp; Likitha &nbsp;|&nbsp; 1M1B Green Internship Batch 7<br>
+    City/Town Waste Mapping &amp; Awareness Platform &mdash; Project #17 &nbsp;|&nbsp; Bangalore, India
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// MOBILE MENU
+function toggleMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+function closeMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+
+// MAP
+const map = L.map('leaflet-map').setView([12.9716, 77.5946], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+function makeIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
+    iconSize: [14,14], iconAnchor: [7,7]
+  });
+}
+const iconActive   = makeIcon('#e53935');
+const iconReported = makeIcon('#fb8c00');
+const iconReview   = makeIcon('#1565c0');
+
+const hotspots = [
+  { lat:12.9352, lng:77.6245, name:"Koramangala 4th Block",     zone:"South",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+  { lat:13.0358, lng:77.5970, name:"Hebbal Lake Road",          zone:"North",   issue:"Overflowing Bin",      status:"Reported",     icon:iconReported },
+  { lat:12.9783, lng:77.6408, name:"Indiranagar 100 Feet Road", zone:"East",    issue:"Irregular Collection", status:"Under Review", icon:iconReview   },
+  { lat:12.9279, lng:77.5671, name:"Jayanagar 9th Block",       zone:"South",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+  { lat:13.0100, lng:77.5500, name:"Yeshwanthpur Market",       zone:"West",    issue:"Overflowing Bin",      status:"Active",       icon:iconActive   },
+  { lat:12.9850, lng:77.5533, name:"Rajajinagar Main Road",     zone:"West",    issue:"Irregular Collection", status:"Reported",     icon:iconReported },
+  { lat:13.0430, lng:77.6170, name:"Hennur Road Junction",      zone:"North",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+  { lat:12.9010, lng:77.5780, name:"BTM Layout 2nd Stage",      zone:"South",   issue:"Overflowing Bin",      status:"Active",       icon:iconActive   },
+  { lat:12.9592, lng:77.6974, name:"Whitefield Main Road",      zone:"East",    issue:"Irregular Collection", status:"Under Review", icon:iconReview   },
+  { lat:12.9716, lng:77.5760, name:"Majestic Bus Stand",        zone:"Central", issue:"Overflowing Bin",      status:"Active",       icon:iconActive   },
+  { lat:13.0200, lng:77.6400, name:"Banaswadi Circle",          zone:"North",   issue:"Overflowing Bin",      status:"Active",       icon:iconActive   },
+  { lat:12.9130, lng:77.6100, name:"Bommanahalli Fly-over",     zone:"South",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+  { lat:12.9940, lng:77.7000, name:"Marathahalli Bridge",       zone:"East",    issue:"Overflowing Bin",      status:"Reported",     icon:iconReported },
+  { lat:12.9550, lng:77.5400, name:"Banashankari Bus Stand",    zone:"South",   issue:"Irregular Collection", status:"Active",       icon:iconActive   },
+  { lat:13.0600, lng:77.5800, name:"Peenya Industrial Area",    zone:"North",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+  { lat:12.9300, lng:77.6800, name:"Electronic City Phase 1",   zone:"South",   issue:"Overflowing Bin",      status:"Under Review", icon:iconReview   },
+  { lat:12.9800, lng:77.6200, name:"Domlur Junction",           zone:"East",    issue:"Illegal Dumping",      status:"Reported",     icon:iconReported },
+  { lat:13.0000, lng:77.5700, name:"Sadashivanagar Circle",     zone:"North",   issue:"Irregular Collection", status:"Active",       icon:iconActive   },
+  { lat:12.9650, lng:77.5500, name:"Vijayanagar Main Road",     zone:"West",    issue:"Overflowing Bin",      status:"Active",       icon:iconActive   },
+  { lat:12.9450, lng:77.5650, name:"Kanakapura Road Junction",  zone:"South",   issue:"Illegal Dumping",      status:"Active",       icon:iconActive   },
+];
+
+hotspots.forEach(h => {
+  const statusColor = h.status === 'Active' ? '#e53935' : h.status === 'Reported' ? '#fb8c00' : '#1565c0';
+  L.marker([h.lat, h.lng], { icon: h.icon }).addTo(map)
+   .bindPopup(`<b>${h.name}</b><br>Zone: ${h.zone}<br><span style="color:${statusColor}">Issue: ${h.issue}</span><br>Status: ${h.status}`);
+});
+
+// DIRECTORY
+const centres = [
+  { name:"Koramangala DWCC",             zone:"South",   ward:"Koramangala",     address:"5th Block, Near Water Tank",              timings:"7AM–7PM", contact:"080-25533210" },
+  { name:"Hebbal Dry Waste Centre",      zone:"North",   ward:"Hebbal",          address:"Hebbal Main Road, Opp. Lake Garden",      timings:"7AM–6PM", contact:"080-23632145" },
+  { name:"Indiranagar DWCC",             zone:"East",    ward:"Indiranagar",     address:"12th Main, HAL 2nd Stage",                timings:"8AM–7PM", contact:"080-25218890" },
+  { name:"Jayanagar DWCC",               zone:"South",   ward:"Jayanagar",       address:"4th Block, 11th Main",                    timings:"7AM–6PM", contact:"080-26634520" },
+  { name:"Yeshwanthpur Collection Ctr",  zone:"West",    ward:"Yeshwanthpur",    address:"Near Tumkur Road",                        timings:"6AM–6PM", contact:"080-23371245" },
+  { name:"Rajajinagar DWCC",             zone:"West",    ward:"Rajajinagar",     address:"3rd Block, 8th Cross",                    timings:"7AM–7PM", contact:"080-23356789" },
+  { name:"Hennur DWCC",                  zone:"North",   ward:"Hennur",          address:"Hennur Main Road, Near Circle",            timings:"7AM–5PM", contact:"080-28462340" },
+  { name:"BTM Layout Collection Centre", zone:"South",   ward:"BTM Layout",      address:"2nd Stage, 16th Cross",                   timings:"7AM–7PM", contact:"080-26681234" },
+  { name:"Whitefield DWCC",              zone:"East",    ward:"Whitefield",      address:"Hope Farm Junction",                      timings:"8AM–6PM", contact:"080-28451678" },
+  { name:"MG Road Waste Facility",       zone:"Central", ward:"Shivajinagar",    address:"Brigade Road Lane, Near MG Road",         timings:"7AM–7PM", contact:"080-22864530" },
+  { name:"Banaswadi DWCC",               zone:"North",   ward:"Banaswadi",       address:"Banaswadi Main Road, Behind Post Office",  timings:"7AM–6PM", contact:"080-25400123" },
+  { name:"Banashankari DWCC",            zone:"South",   ward:"Banashankari",    address:"2nd Stage, BSK Circle",                   timings:"6AM–6PM", contact:"080-26762345" },
+  { name:"Marathahalli DWCC",            zone:"East",    ward:"Marathahalli",    address:"Outer Ring Road, Near Bridge",            timings:"7AM–7PM", contact:"080-28453210" },
+  { name:"Peenya DWCC",                  zone:"North",   ward:"Peenya",          address:"2nd Stage, Near Industrial Area",         timings:"7AM–5PM", contact:"080-23726789" },
+  { name:"Electronic City DWCC",         zone:"South",   ward:"Electronics City",address:"Phase 1, Hosur Road",                    timings:"8AM–6PM", contact:"080-28521456" },
+  { name:"Vijayanagar DWCC",             zone:"West",    ward:"Vijayanagar",     address:"4th Stage, M.C. Layout",                  timings:"7AM–7PM", contact:"080-23202345" },
+  { name:"Sadashivanagar DWCC",          zone:"North",   ward:"Sadashivanagar",  address:"Palace Road, Behind Raj Bhavan",          timings:"8AM–5PM", contact:"080-23341267" },
+  { name:"Domlur DWCC",                  zone:"East",    ward:"Domlur",          address:"Domlur Layout, 2nd Cross",                timings:"7AM–6PM", contact:"080-25209876" },
+];
+
+const zoneCode = { "North":"N","South":"S","East":"E","West":"W","Central":"C" };
+
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#999">No centres found matching your search.</td></tr>';
+    return;
+  }
+  data.forEach((c, i) => {
+    const zc = zoneCode[c.zone] || 'C';
+    tbody.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="zone-badge zone-${zc}">${c.zone}</span></td>
+      <td>${c.ward}</td>
+      <td>${c.address}</td>
+      <td>${c.timings}</td>
+      <td>${c.contact}</td>
+    </tr>`;
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const zone = document.getElementById('zoneFilter').value;
+  const filtered = centres.filter(c => {
+    const matchQ = !q || c.name.toLowerCase().includes(q) || c.ward.toLowerCase().includes(q) || c.address.toLowerCase().includes(q);
+    const matchZ = !zone || c.zone === zone;
+    return matchQ && matchZ;
+  });
+  renderTable(filtered);
+}
+renderTable(centres);
+
+// Active nav highlight on scroll
+const sections = ['home','map-section','directory','guide','report','contact'];
+const navLinks = document.querySelectorAll('.nav-links a:not(.nav-cta)');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 100) current = id;
+  });
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === '#' + current) link.classList.add('active');
+  });
+});
+
+// REPORT FORM
+function submitReport() {
+  const name = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const location = document.getElementById('f-location').value.trim();
+  const zone = document.getElementById('f-zone').value;
+  const issue = document.getElementById('f-issue').value;
+  if (!name || !email || !location || !zone || !issue) {
+    alert('Please fill in all required fields marked with *.');
+    return;
+  }
+  document.getElementById('successMsg').classList.add('show');
+  ['f-name','f-email','f-location','f-zone','f-issue','f-desc'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('f-photo').value = '';
+  setTimeout(() => document.getElementById('successMsg').classList.remove('show'), 6000);
+}
+</script>
+</body>
+</html>
